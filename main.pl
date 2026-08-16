@@ -15,17 +15,29 @@ our $VERSION = 'v0.0.1';
 
 # v0.0.1
 # $file $regex
-# Lê e passa a regex no arquivo, validando a expressão
-# e retornando os grupos de captura.
+# --grep|g $file $regex
 
-# v0.0.2
-# --version
-# --scan|s $file [$regex]
-# --build|b [$regex] [$file]
+# v0.0.?
+# --apply|s $file $regex $replacement
 
-# v0.0.3
+# v0.0.?
+# --save|s $alias $regex
+# --library|l
+# --grep|g $file $alias|$regex
+# --apply|s $file $alias|$regex $replacement
+
+# v0.0.?
+# --apply|s $file [$alias|$regex]
+
+# v0.0.?
+# --grep|g $file [$alias|$regex]
+
+# v0.0.?
 # [--help]
-# --library|l [$file]
+# --version
+
+# v0.1.0
+# --build|b
 
 BEGIN {
     sub report_error ($@) {
