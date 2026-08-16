@@ -15,29 +15,60 @@ our $VERSION = 'v0.0.1';
 
 # v0.0.1
 # $file $regex
-# --grep|g $file $regex
+# --test|t $f $regex
+# ...--global|g
+# ...--insensitive|i
+# ...--multiline|m
+# ...--single-line|s
+# ...--extended|x
 
 # v0.0.?
-# --apply|s $file $regex $replacement
+# --replace|r $file $regex $replacement [-o $output]
 
 # v0.0.?
-# --save|s $alias $regex
-# --library|l
-# --grep|g $file $alias|$regex
-# --apply|s $file $alias|$regex $replacement
+# -r $source $rx $rp [-o $out]
+# -t $source $rx
 
 # v0.0.?
-# --apply|s $file [$alias|$regex]
+# --history|h [ls]
+# --t $sr $index|$rx
+# --r $source $index|$rx $rp [-o $out]
 
 # v0.0.?
-# --grep|g $file [$alias|$regex]
+# -h off
+# -h clear-all
+# -h drop $index
+# ...--no-keep|n
 
 # v0.0.?
-# [--help]
-# --version
+# ...--keep|k $alias
+# --keep|k $alias $index|$regex
+# --blueprints|b [ls]
+
+# v0.0.?
+# -b edit $alias
+# -b drop $alias
+
+# v0.0.?
+# -t $sr $alias|$id|$rx
+# -r $sr $alias|$id|$rx $rp [-o $out]
+
+# v0.0.?
+# -r $sr [$al|$id|$rx] [$rp] [-o $out]
+
+# v0.0.?
+# -r $sr [$al|$id|$rx] [$rp] > -r [$al|$id|$rx] [$rp] > [...]
+
+# v0.0.?
+# [--help|h]
+# --version|v
+
+# v0.0.?
+# [-h] [$alias|$index|$regex]
+# [--explain|e] [$alias|$index|$regex]
 
 # v0.1.0
-# --build|b
+# --assemble|a [$alias]
 
 BEGIN {
     sub report_error ($@) {
