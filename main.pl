@@ -8,8 +8,9 @@ use constant EXT_USAGE_ERR => 64;
 use constant EXT_NOT_FOUND => 66;
 
 use Term::ANSIColor;
-use Data::Dump qw[ dd ];
-use List::Util qw[ uniq ];
+use Data::Dump  qw[ dd ];
+use List::Util  qw[ uniq ];
+use Time::HiRes qw[ sleep ];
 
 our $VERSION = 'v0.0.1';
 
@@ -89,6 +90,10 @@ BEGIN {
         print " - $error\n";
         exit $ext_code
     }
+
+    sub verify_odd_escapes ($) {
+        length(shift) % 2 == 1
+    }
 }
 
 INIT {
@@ -115,52 +120,41 @@ INIT {
     } catch ($e) { report_error $file, @$e }
 }
 
-my ($regex, $flags, $global);
+my ($regex, $flags);
 INIT {
     try {
-        ($regex = shift) =~ /^
-            (?<s_begin>\/?)
-            (?<body>.+?)
-            (?<esc_end>[\\]*)
-            (?:
-                (?<s_end>\/)
-                (?<flags>[^\/]*)
-            )?
-        $/x;
-        my %r = %{^CAPTURE};
+        my $raw_input = shift;
+        my $input  = $raw_input;
+        
+        my ($s_begin, $body, $escs_end, $s_end);
+        ($s_begin, $input)       = $input =~ /^(\/|)(.+)/;
+        ($input, $s_end, $flags) = $input =~ /(.+?)(\/|)([a-z]*)$/i;
+        ($body, $escs_end)       = $input =~ /(.+?(\\*))$/;
 
-        unless (
-            defined $r{s_end}
-            and length($r{esc_end}) % 2 == 0
-        ) {
-            $r{s_end} = '';
-            $r{flags} = ''
-        }
-
-        if ($r{s_begin} ne $r{s_end}) {
-            my $pos = $r{s_begin} ? 'end' : 'start';
-            die "{Missing slash at the $pos of the expression}"
-        }
-
-        if ($r{flags} =~ /([^gimsx])/) {
+        if (defined $s_end and verify_odd_escapes $escs_end) {
+            $body .= "/$flags";
+            $flags = ''
+            
+        } elsif ($flags =~ /([^gimsx])/) {
             die "{Unknown regexp modifier \"/$&\"}"
         }
 
-        eval qq"'' =~ /$r{body}/$r{flags}; 1" or die $!;
-        $regex = qr/$r{body}/;
+        $body =~ s/(\\*\/)/
+            (verify_odd_escapes $1) ? "\\$1" : $1
+        /eg;
         
-        $flags = $r{flags};
-        $global = $flags =~ /g/;
+        eval qq"'' =~ /$body/$flags; 1" or die $!;
+        $regex = qr/$body/
             
     } catch ($e) {
         report_error $regex, $e, EXT_USAGE_ERR
     }
 }
 
-
 open my $fh, '<', $file or die;
 
 my @matches;
+my $global = $flags =~ /g/;
 while (my $line = <$fh>) {
     push @matches, eval "\$line =~ /$regex/$flags";
     last unless !@matches or $global
