@@ -117,13 +117,16 @@ INIT {
         
         die ['{Path leads to a directory}', EXT_USAGE_ERR]
             unless -e $file;
-    } catch ($e) { report_error $file, @$e }
+    } catch ($e) {
+        report_error $file, @$e
+    }
 }
 
 my ($regex, $flags);
 INIT {
+    my $raw_input = shift;
+    
     try {
-        my $raw_input = shift;
         my $input  = $raw_input;
         
         my ($s_begin, $body, $escs_end, $s_end);
@@ -142,12 +145,26 @@ INIT {
         $body =~ s/(\\*\/)/
             (verify_odd_escapes $1) ? "\\$1" : $1
         /eg;
-        
+
         eval qq"'' =~ /$body/$flags; 1" or die $!;
-        $regex = qr/$body/
+        $regex = qr/$body/;
+
+        print colored qq'"$raw_input"', 'yellow';
+        print colored ' :: ', 'bright_magenta';
+        print colored '/', 'bold bright_cyan';
+        print colored $body, 'bright_blue';
+        print colored '/', 'bold bright_cyan';
+
+        print(
+            ($flags)
+            ? colored $flags, 'bold bright_red'
+            : ' (no flags)'
+        );
+
+        print "\n"
             
     } catch ($e) {
-        report_error $regex, $e, EXT_USAGE_ERR
+        report_error $raw_input, $e, EXT_USAGE_ERR
     }
 }
 
@@ -162,7 +179,8 @@ while (my $line = <$fh>) {
 
 close $fh;
 
-
-dd @matches;
+print colored '# Total matches: ', 'bold bright_magenta';
+print colored scalar @matches, 'bold';
+print "\n";
 
 1
