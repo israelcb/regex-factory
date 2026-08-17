@@ -149,6 +149,8 @@ INIT {
         eval qq"'' =~ /$body/$flags; 1" or die $!;
         $regex = qr/$body/;
 
+        # Todo:
+        # Recognize and highlight regex metacharacters
         print colored qq'"$raw_input"', 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
         print colored '/', 'bold bright_green';
@@ -187,6 +189,11 @@ while (my $line = <$fh>) {
 }
 
 close $fh;
+
+# Todo:
+# - Fix bugs when searching without /g
+# - Fix bugs when the search returns less then 5 results
+# - Display captures groups
 
 print colored '# Total matches ', 'bold bright_magenta';
 print colored scalar @matches, 'bold';
