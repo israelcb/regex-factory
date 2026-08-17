@@ -9,8 +9,7 @@ use constant EXT_NOT_FOUND => 66;
 
 use Term::ANSIColor;
 use Data::Dump  qw[ dd ];
-use List::Util  qw[ uniq ];
-use Time::HiRes qw[ sleep ];
+use List::Util  qw[ first uniq ];
 
 our $VERSION = 'v0.0.1';
 
@@ -151,19 +150,19 @@ INIT {
 
         # Todo:
         # Recognize and highlight regex metacharacters
-        print colored qq'"$raw_input"', 'bright_yellow';
+        print colored "'$raw_input'", 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
-        print colored '/', 'bold bright_green';
+        print colored '/', 'bold';
         print colored $body, 'bright_yellow';
-        print colored '/', 'bold bright_green';
+        print colored '/', 'bold';
 
         print(
             ($flags)
-            ? colored $flags, 'bold bright_green'
+            ? colored $flags, 'bold'
             : ' (no flags)'
         );
 
-        print "\n\n"
+        print "\n"
             
     } catch ($e) {
         report_error $raw_input, $e, EXT_USAGE_ERR
@@ -176,50 +175,64 @@ my @matches;
 my @uniq_matches;
 
 my $global = $flags =~ /g/;
-my $line_number = 1;
+my $line_number = 0;
+
 while (my $line = <$fh>) {
+    $line_number++;
     my ($m) = eval "\$line =~ /$regex/$flags";
     
+    next unless $m;
     push @matches, [$m, $line_number];
-    push @uniq_matches, $m;
-    @uniq_matches = uniq @uniq_matches;
 
-    $line_number++;
-    last unless !@matches or $global
+    my $m_data =
+        first { $$_[0] eq $m }
+        @uniq_matches;
+
+    push @uniq_matches, ($m_data = [ $m, 0 ])
+        unless $m_data;
+
+    $$m_data[1]++;
+    last unless $global
 }
 
 close $fh;
 
 # Todo:
 # - Fix bugs when searching without /g
-# - Fix bugs when the search returns less then 5 results
+# - Fix bugs when the search returns less than 5 results
 # - Display captures groups
+if (@matches > 0) {
+    my $n_uniq_matches = scalar(@uniq_matches);
+    1 while $n_uniq_matches =~ s/(\d)(\d{3})(\s|$)/$1 $2$3/g;
 
-print colored '# Total matches ', 'bold bright_magenta';
-print colored scalar @matches, 'bold';
-print "\n";
-
-foreach my $m (@matches[0..4]) {
-    my ($text, $line_number) = @$m;
-    print "ln $line_number: ";
-    print '- ' . colored qq'"$text"', 'bright_yellow';
+    my $uniq_matches = join "\n", map {
+        (colored "'$$_[0]'", 'bright_yellow')
+        . " ($$_[1])"
+    } @uniq_matches;
+    
+    print colored '# Unique matches: ', 'bright_red';
+    print colored scalar @uniq_matches, 'bold';
     print "\n";
-}
-print "[...]\n";
-
-foreach my $m (@matches[($#matches - 5)..$#matches]) {
-    my ($text, $line_number) = @$m;
-    print "ln $line_number: ";
-    print '- ' . colored qq'"$text"', 'bright_yellow';
+    print $uniq_matches;
     print "\n";
+    
+    my $n_matches = scalar(@matches);
+    1 while $n_matches =~ s/(\d)(\d{3})(\s|$)/$1 $2$3/g;
+
+    print "\n";
+    print colored '# Total matches: ', 'bright_magenta';
+    print colored $n_matches, 'bold';
+    print "\n";
+    
+    print join "\n", map {
+        ":$$_[1]"
+        . (colored " '$$_[0]'", 'bright_yellow')
+    } @matches[0..4];
+    
+} else {
+    print colored 'No matches found!', 'bold bright_red';
 }
-print "\n";
 
-print colored '# Total unique matches ', 'bold bright_red';
-print colored scalar @uniq_matches, 'bold';
-print "\n";
-
-print '#{' . join(', ', map { colored qq'"$_"', 'bright_yellow' } @uniq_matches) . '}';
 print "\n";
 
 1
