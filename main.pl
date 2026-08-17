@@ -149,19 +149,19 @@ INIT {
         eval qq"'' =~ /$body/$flags; 1" or die $!;
         $regex = qr/$body/;
 
-        print colored qq'"$raw_input"', 'yellow';
+        print colored qq'"$raw_input"', 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
-        print colored '/', 'bold bright_cyan';
-        print colored $body, 'bright_blue';
-        print colored '/', 'bold bright_cyan';
+        print colored '/', 'bold bright_green';
+        print colored $body, 'bright_yellow';
+        print colored '/', 'bold bright_green';
 
         print(
             ($flags)
-            ? colored $flags, 'bold bright_red'
+            ? colored $flags, 'bold bright_green'
             : ' (no flags)'
         );
 
-        print "\n"
+        print "\n\n"
             
     } catch ($e) {
         report_error $raw_input, $e, EXT_USAGE_ERR
@@ -171,16 +171,48 @@ INIT {
 open my $fh, '<', $file or die;
 
 my @matches;
+my @uniq_matches;
+
 my $global = $flags =~ /g/;
+my $line_number = 1;
 while (my $line = <$fh>) {
-    push @matches, eval "\$line =~ /$regex/$flags";
+    my ($m) = eval "\$line =~ /$regex/$flags";
+    
+    push @matches, [$m, $line_number];
+    push @uniq_matches, $m;
+    @uniq_matches = uniq @uniq_matches;
+
+    $line_number++;
     last unless !@matches or $global
 }
 
 close $fh;
 
-print colored '# Total matches: ', 'bold bright_magenta';
+print colored '# Total matches ', 'bold bright_magenta';
 print colored scalar @matches, 'bold';
+print "\n";
+
+foreach my $m (@matches[0..4]) {
+    my ($text, $line_number) = @$m;
+    print "ln $line_number: ";
+    print '- ' . colored qq'"$text"', 'bright_yellow';
+    print "\n";
+}
+print "[...]\n";
+
+foreach my $m (@matches[($#matches - 5)..$#matches]) {
+    my ($text, $line_number) = @$m;
+    print "ln $line_number: ";
+    print '- ' . colored qq'"$text"', 'bright_yellow';
+    print "\n";
+}
+print "\n";
+
+print colored '# Total unique matches ', 'bold bright_red';
+print colored scalar @uniq_matches, 'bold';
+print "\n";
+
+print '#{' . join(', ', map { colored qq'"$_"', 'bright_yellow' } @uniq_matches) . '}';
 print "\n";
 
 1
