@@ -181,24 +181,23 @@ INIT {
 open my $fh, '<', $file or die;
 
 my @matches;
-my @uniq_matches;
+my @u_matches;
 
 my $global = $flags =~ /g/;
 my $line_number = 0;
 
 while (my $line = <$fh>) {
     $line_number++;
-    my ($m) = eval "\$line =~ /$regex/$flags";
     
+    my ($m) = eval "\$line =~ /$regex/$flags";
     next unless $m;
-    push @matches, [$m, $line_number];
 
     my $m_data =
         first { $$_[0] eq $m }
-        @uniq_matches;
-
-    push @uniq_matches, ($m_data = [ $m, 0 ])
-        unless $m_data;
+        @u_matches;
+    
+    push @u_matches, ($m_data = [ $m, 0 ]) unless $m_data;
+    push @matches, [$m, $line_number];
 
     $$m_data[1]++;
     last unless $global
@@ -208,9 +207,15 @@ close $fh;
 
 # Todo:
 # - Display capture groups
-if (@matches > 0) {
-    my $n_matches = @matches;
+my $n_matches = @matches;
+if ($n_matches > 0 and !$global) {
+    my $l = pop @{ $matches[0] };
+
+    print colored
+        "Found match beginning at line $l",
+        'bold bright_green';
     
+} elsif ($n_matches > 0) {
     print "\n";
     print colored "# Total matches: ", 'bright_magenta';
     print colored number_format $n_matches, 'bold';
@@ -224,9 +229,9 @@ if (@matches > 0) {
     }
 
     print colored "\n# Unique matches: ", 'bright_red';
-    print colored number_format @uniq_matches, 'bold';
+    print colored number_format @u_matches, 'bold';
 
-    foreach my $u (@uniq_matches) {
+    foreach my $u (@u_matches) {
         print "\n";
         print colored "'$$u[0]'", 'bright_yellow';
         print ' (' . (number_format $$u[1]) . ')';
