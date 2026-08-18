@@ -9,7 +9,7 @@ use constant EXT_NOT_FOUND => 66;
 
 use Term::ANSIColor;
 use Data::Dump  qw[ dd ];
-use List::Util  qw[ first uniq ];
+use List::Util  qw[ first uniq min ];
 
 our $VERSION = 'v0.0.1';
 
@@ -92,6 +92,15 @@ BEGIN {
 
     sub verify_odd_escapes ($) {
         length(shift) % 2 == 1
+    }
+
+    sub number_format ($) {
+        my $number = shift;
+        1 while $number =~ s/
+            (\d)(\d{3})(\s|$)
+        /$1 $2$3/x;
+        
+        $number
     }
 }
 
@@ -198,41 +207,37 @@ while (my $line = <$fh>) {
 close $fh;
 
 # Todo:
-# - Fix bugs when searching without /g
-# - Fix bugs when the search returns less than 5 results
-# - Display captures groups
+# - Display capture groups
 if (@matches > 0) {
-    my $n_uniq_matches = scalar(@uniq_matches);
-    1 while $n_uniq_matches =~ s/(\d)(\d{3})(\s|$)/$1 $2$3/g;
+    my $n_matches = @matches;
+    
+    print "\n";
+    print colored "# Total matches: ", 'bright_magenta';
+    print colored number_format $n_matches, 'bold';
+    print "\n";
 
-    my $uniq_matches = join "\n", map {
-        (colored "'$$_[0]'", 'bright_yellow')
-        . " ($$_[1])"
-    } @uniq_matches;
-    
-    print colored '# Unique matches: ', 'bright_red';
-    print colored scalar @uniq_matches, 'bold';
-    print "\n";
-    print $uniq_matches;
-    print "\n";
-    
-    my $n_matches = scalar(@matches);
-    1 while $n_matches =~ s/(\d)(\d{3})(\s|$)/$1 $2$3/g;
+    my $end = min 4, $n_matches - 1;
+    foreach my $m (@matches[0..$end]) {
+        print ":$$m[1]";
+        print colored " '$$m[0]'", 'bright_yellow';
+        print "\n";
+    }
 
-    print "\n";
-    print colored '# Total matches: ', 'bright_magenta';
-    print colored $n_matches, 'bold';
-    print "\n";
-    
-    print join "\n", map {
-        ":$$_[1]"
-        . (colored " '$$_[0]'", 'bright_yellow')
-    } @matches[0..4];
+    print colored "\n# Unique matches: ", 'bright_red';
+    print colored number_format @uniq_matches, 'bold';
+
+    foreach my $u (@uniq_matches) {
+        print "\n";
+        print colored "'$$u[0]'", 'bright_yellow';
+        print ' (' . (number_format $$u[1]) . ')';
+    }
     
 } else {
-    print colored 'No matches found!', 'bold bright_red';
+    print colored
+        'No matches found!',
+        'bold bright_red';
 }
 
-print "\n";
+print "\n" x 2;
 
 1
