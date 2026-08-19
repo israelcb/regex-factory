@@ -8,8 +8,8 @@ use constant EXT_USAGE_ERR => 64;
 use constant EXT_NOT_FOUND => 66;
 
 use Term::ANSIColor;
-use Data::Dump  qw[ dd ];
-use List::Util  qw[ first uniq min ];
+use Data::Dump qw[ dd ];
+use List::Util qw[ first uniq min ];
 
 our $VERSION = 'v0.0.1';
 
@@ -102,6 +102,62 @@ BEGIN {
         
         $number
     }
+
+    sub style_regex ($) {
+        my $regex = shift;
+        
+        my @regex = $regex =~ /./g;
+        my $last = '';
+        my $fmt = '';
+        my @inside;
+
+        # https://www.pcre.org/original/doc/html/pcrepattern.html
+        while ((my $r, $regex) = $regex =~ /^(.)(.*)/) {
+            if (
+                !$fmt and $r eq '^'
+                or !@inside and $r eq '$'
+            ) {
+                $fmt .= colored $r, 'bright_red';
+                next
+            }
+
+            my $inside = $inside[$#inside] // '';
+            if ($inside eq '\\Q') {
+                $last .= $r;
+                next;
+            }
+
+            if ($r eq '\\') {
+                $last = $r;
+                next;
+            }
+
+            if ($last ne '\\') {
+                $fmt .= colored $r, 'bright_yellow'
+            
+            } else {
+                $last .= $r;
+                
+                if ($last =~ /\\A|\\Q/) {
+                    push @inside, $last
+                    
+                } elsif ($last =~ /\\Z|\\E/) {
+                    $fmt .= colored $last, 'bright_yellow';
+                    pop @inside
+                    
+                } elsif ($r !~ /[efnrt\\]/i) {
+                    $fmt .= colored $last,
+                        ($r =~ /[dhsvw]/i) ? 'bright_cyan'     :
+                        ($r =~ /[az]/i)    ? 'bold bright_red' :
+                        'bright_yellow'
+                }
+            }
+
+            $last = $r
+        }
+
+        join colored('/', 'bold'), '', $fmt, ''
+    }
 }
 
 INIT {
@@ -109,7 +165,7 @@ INIT {
 
     print colored('Usage:', 'bold');
     print " regex-factory <file> <regex>\n";
-    exit EXT_USAGE_ERR;
+    exit EXT_USAGE_ERR
 }
 
 my $file;
@@ -125,6 +181,7 @@ INIT {
         
         die ['{Path leads to a directory}', EXT_USAGE_ERR]
             unless -e $file;
+
     } catch ($e) {
         report_error $file, @$e
     }
@@ -139,9 +196,10 @@ INIT {
         
         my ($s_begin, $body, $escs_end, $s_end);
         ($s_begin, $input)       = $input =~ /^(\/|)(.+)/;
-        ($input, $s_end, $flags) = $input =~ /(.+?)(\/|)([a-z]*)$/i;
+        ($input, $s_end, $flags) = $input =~ /(.+?)(?:(\/)([a-z]*)|)$/i;
         ($body, $escs_end)       = $input =~ /(.+?(\\*))$/;
 
+        $flags //= '';
         if (defined $s_end and verify_odd_escapes $escs_end) {
             $body .= "/$flags";
             $flags = ''
@@ -161,9 +219,7 @@ INIT {
         # Recognize and highlight regex metacharacters
         print colored "'$raw_input'", 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
-        print colored '/', 'bold';
-        print colored $body, 'bright_yellow';
-        print colored '/', 'bold';
+        print style_regex $body;
 
         print(
             ($flags)
@@ -171,7 +227,7 @@ INIT {
             : ' (no flags)'
         );
 
-        print "\n"
+        print "\n";
             
     } catch ($e) {
         report_error $raw_input, $e, EXT_USAGE_ERR
@@ -200,14 +256,17 @@ while (my $line = <$fh>) {
     push @matches, [$m, $line_number];
 
     $$m_data[1]++;
-    last unless $global
+    last unless $global;
 }
 
 close $fh;
 
 # Todo:
 # - Display capture groups
+# - Display named/unamed capture groups
 my $n_matches = @matches;
+@u_matches = sort { $$b[1] <=> $$a[1] } @u_matches;
+
 if ($n_matches > 0 and !$global) {
     my $l = pop @{ $matches[0] };
 
@@ -228,13 +287,22 @@ if ($n_matches > 0 and !$global) {
         print "\n";
     }
 
+    if (@matches > 5) {
+        print "[...]\n";
+    }
+
     print colored "\n# Unique matches: ", 'bright_red';
     print colored number_format @u_matches, 'bold';
 
-    foreach my $u (@u_matches) {
+    $end = min 9, scalar(@u_matches) - 1;
+    foreach my $u (@u_matches[0..$end]) {
         print "\n";
         print colored "'$$u[0]'", 'bright_yellow';
-        print ' (' . (number_format $$u[1]) . ')';
+        print ' (' . number_format($$u[1]) . ')';
+    }
+    
+    if (@u_matches > 10) {
+        print "\n[...]";
     }
     
 } else {
