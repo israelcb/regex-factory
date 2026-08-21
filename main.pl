@@ -8,12 +8,22 @@ use constant EXT_USAGE_ERR => 64;
 use constant EXT_NOT_FOUND => 66;
 
 use Term::ANSIColor;
-use Data::Dump qw[ dd ];
-use List::Util qw[ first uniq min ];
+use Data::Dump  qw[ dd ];
+use Time::HiRes qw[ sleep ];
+use List::Util  qw[ first uniq min ];
 
 our $VERSION = 'v0.0.1';
 
 BEGIN {
+    sub bld   ($) { colored (shift), 'bold' }
+    sub b_red ($) { colored (shift), 'bold bright_red' }
+
+    sub wht ($) { shift }
+    sub red ($) { colored (shift), 'bright_red' }
+    sub cyn ($) { colored (shift), 'bright_cyan' }
+    sub ylw ($) { colored (shift), 'bright_yellow' }
+    sub mgt ($) { colored (shift), 'bright_magenta' }
+
     sub report_error ($@) {
         my $file     = shift;
         my $error    = shift;
@@ -28,7 +38,7 @@ BEGIN {
         $error =~ s/^([^{].+?) at .+?$/$1/;
         $error =~ s/^{([^}]+?)}.*$/$1/;
         
-        print colored $file, 'red';
+        print red $file;
         print " - $error\n";
         exit $ext_code
     }
@@ -47,57 +57,49 @@ BEGIN {
         $number
     }
 
-    sub style_regex ($) {
-        my $regex = shift;
-        
-        my @regex = $regex =~ /./g;
-        my $last = '';
-        my $fmt = '';
-        my @inside;
+    # https://www.pcre.org/original/doc/html/pcrepattern.html
+    sub style_regex () {
+        my ($grp, $rgx, $fmt);
 
-        # https://www.pcre.org/original/doc/html/pcrepattern.html
-        while ((my $r, $regex) = $regex =~ /^(.)(.*)/) {
-            if (
-                !$fmt and $r eq '^'
-                or !@inside and $r eq '$'
-            ) {
-                $fmt .= colored $r, 'bright_red';
-                next
-            }
+        while (1) {
+            last unless s/^(.)//r;
+            (my $prev, $rgx) = ($rgx // '', @{^CAPTURE});
 
-            my $inside = $inside[$#inside] // '';
-            if ($inside eq '\\Q') {
-                $last .= $r;
-                next;
-            }
-
-            if ($r eq '\\') {
-                $last = $r;
-                next;
-            }
-
-            if ($last ne '\\') {
-                $fmt .= colored $r, 'bright_yellow'
-            
-            } else {
-                $last .= $r;
-                
-                if ($last =~ /\\A|\\Q/) {
-                    push @inside, $last
-                    
-                } elsif ($last =~ /\\Z|\\E/) {
-                    $fmt .= colored $last, 'bright_yellow';
-                    pop @inside
-                    
-                } elsif ($r !~ /[efnrt\\]/i) {
-                    $fmt .= colored $last,
-                        ($r =~ /[dhsvw]/i) ? 'bright_cyan'     :
-                        ($r =~ /[az]/i)    ? 'bold bright_red' :
-                        'bright_yellow'
+            my $clr = \&wht;
+            do {
+                unless (defined $prev) {
+                    $clr = \&b_red if $rgx eq '^';
+                    return
                 }
-            }
 
-            $last = $r
+                if ($grp) {
+                    $rgx = $prev . $rgx;
+
+                    next unless $grp . $prev . $rgx =~ /^
+                        \\A(?:[^\\]*(?:\\[^Z]|))*\\Z
+                        |\\Q(?:[^\\]*(?:\\[^E]|))*\\E
+                        |\\a(?:[^\\]*(?:\\[^z]|))*\\z
+                        |\((?:[^\)]*(?:[^\\]\\\)|))*\)
+                        |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
+                        |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
+                    $/x;
+
+                    undef $grp;
+                    return \&ylw
+                }
+
+                if ($prev eq '\\') {
+                    if ($rgx =~ /[aAQ]/) {
+                        $grp = '\\' . $&;
+                        next
+                    }
+
+                    return \&cyn if $rgx =~ /[dw]/i;
+                    return \&ylw if $rgx =~ /[efFnNrRtT\\]/
+                }
+            };
+
+            $fmt .= &$clr($rgx)
         }
 
         join colored('/', 'bold'), '', $fmt, ''
@@ -163,7 +165,7 @@ INIT {
         # Recognize and highlight regex metacharacters
         print colored "'$raw_input'", 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
-        print style_regex $body;
+        print style_regex for $body;
 
         print(
             ($flags)
