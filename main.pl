@@ -166,7 +166,40 @@ INIT {
         $regex = qr/$body/;
 
         # Todo:
-        # Recognize and highlight regex metacharacters
+        # - Modularize
+        # - Write tests
+
+        # Todo:
+        # Improve regex metacharacters highlighting:
+        # (...)             - group must not interfere in the content matching
+        # (?:...)           - no colors for '(?:' or ')'
+        # \w*, \w+, \w?     - \+ must have the same color of 'w'
+        # *?, +?            - special colors when preceded by a group closing
+        # \w*?, \w+?        - \+?* must have the same color of 'w'
+        # \n, \t, \r, \f... - \ must have the same color of n, t, r...
+        # [^...]            - must be distinct of [...], possibly in red
+
+        # Todo:
+        # Improve group highlighting (phase 1):
+        # ln 1: (...) - openning and closing must have an 'unique' color
+        # ln 2: ^...^ - that 'unique' color must be also displayed bellow
+
+        # Todo:
+        # Improve group highlighting (phase 2):
+        # ln 1:   (?<foo>...(...))...(?:...)...(...)...(?<bar>...)
+        # ln 2:   ^1........^2..^^.............^3..^...^4........^
+        # ...
+        # ln x:   Group 1    Group 2    Group 3    Group 4
+        # ln x+1: [.....]    [.....]    [.....]    [.....]
+
+        # Todo:
+        # Improve group highlighting (phase 3):
+        # ln 1:   (?<foo>...(...))...(?:...)...(...)...(?<bar>...)
+        # ln 2:   ^..foo....^1..^^.............^2..^...^..bar....^
+        # ...
+        # ln x:   Group foo    Group bar    Group 1    Group 2
+        # ln x+1: [.......]    [.......]    [.....]    [.....]
+
         print colored "'$raw_input'", 'bright_yellow';
         print colored ' :: ', 'bright_magenta';
         print style_regex for $body;
@@ -211,9 +244,6 @@ while (my $line = <$fh>) {
 
 close $fh;
 
-# Todo:
-# - Display capture groups
-# - Display named/unamed capture groups
 my $n_matches = @matches;
 @u_matches = sort { $$b[1] <=> $$a[1] } @u_matches;
 
