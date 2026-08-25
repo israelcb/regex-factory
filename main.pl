@@ -15,14 +15,14 @@ use List::Util  qw[ first uniq min ];
 our $VERSION = 'v0.0.1';
 
 BEGIN {
-    sub bld   ($) { colored (shift), 'bold' }
-    sub b_red ($) { colored (shift), 'bold bright_red' }
+    sub bld   ($) { colored shift, 'bold' }
+    sub b_red ($) { colored shift, 'bold bright_red' }
 
     sub wht ($) { shift }
-    sub red ($) { colored (shift), 'bright_red' }
-    sub cyn ($) { colored (shift), 'bright_cyan' }
-    sub ylw ($) { colored (shift), 'bright_yellow' }
-    sub mgt ($) { colored (shift), 'bright_magenta' }
+    sub red ($) { colored shift, 'bright_red' }
+    sub cyn ($) { colored shift, 'bright_cyan' }
+    sub ylw ($) { colored shift, 'bright_yellow' }
+    sub mgt ($) { colored shift, 'bright_magenta' }
 
     sub report_error ($@) {
         my $file     = shift;
@@ -59,47 +59,51 @@ BEGIN {
 
     # https://www.pcre.org/original/doc/html/pcrepattern.html
     sub style_regex () {
-        my ($grp, $rgx, $fmt);
+        my ($grp, $chr, $fmt);
 
         while (1) {
-            last unless s/^(.)//r;
-            (my $prev, $rgx) = ($rgx // '', @{^CAPTURE});
+            last unless s/^(.)//;
+            (my $prev, $chr) = ($chr // '', @{^CAPTURE});
 
             my $clr = \&wht;
-            do {
-                unless (defined $prev) {
-                    $clr = \&b_red if $rgx eq '^';
-                    return
+
+            unless ($prev or $chr ne '^') {
+                $clr = \&b_red
+
+            } elsif ($grp) {
+                $chr = $prev . $chr;
+
+                next unless $chr =~ /^(?:
+                    \\A(?:[^\\]*(?:\\[^Z]|))*\\Z
+                    |\\Q(?:[^\\]*(?:\\[^E]|))*\\E
+                    |\\a(?:[^\\]*(?:\\[^z]|))*\\z
+                    |\((?:[^\)]*(?:[^\\]\\\)|))*\)
+                    |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
+                    |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
+                )$/x;
+
+                undef $grp;
+                ($prev) = $chr =~ /(.)$/;
+                $clr = \&ylw
+
+            } elsif ($prev eq '\\') {
+                if ($chr =~ /[aAQ]/) {
+                    $grp = '\\' . $&;
+                    next
                 }
 
-                if ($grp) {
-                    $rgx = $prev . $rgx;
+                $clr = \&cyn if $chr =~ /[dw]/i;
+                $clr = \&ylw if $chr =~ /[efFnNrRtT\\]/
 
-                    next unless $grp . $prev . $rgx =~ /^
-                        \\A(?:[^\\]*(?:\\[^Z]|))*\\Z
-                        |\\Q(?:[^\\]*(?:\\[^E]|))*\\E
-                        |\\a(?:[^\\]*(?:\\[^z]|))*\\z
-                        |\((?:[^\)]*(?:[^\\]\\\)|))*\)
-                        |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
-                        |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
-                    $/x;
+            } elsif ($chr =~ /[\[\(\{]/) {
+                $grp = $chr;
+                next
 
-                    undef $grp;
-                    return \&ylw
-                }
+            } elsif ($chr =~ /[\+\.\*\?]/) {
+                $clr = \&cyn
+            }
 
-                if ($prev eq '\\') {
-                    if ($rgx =~ /[aAQ]/) {
-                        $grp = '\\' . $&;
-                        next
-                    }
-
-                    return \&cyn if $rgx =~ /[dw]/i;
-                    return \&ylw if $rgx =~ /[efFnNrRtT\\]/
-                }
-            };
-
-            $fmt .= &$clr($rgx)
+            $fmt .= &$clr($chr)
         }
 
         join colored('/', 'bold'), '', $fmt, ''
