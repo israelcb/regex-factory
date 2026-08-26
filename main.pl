@@ -99,7 +99,7 @@ BEGIN {
                 $grp = $chr;
                 next
 
-            } elsif ($chr =~ /[\+\.\*\?]/) {
+            } elsif ($chr =~ /[\+\.\*\?\|]/) {
                 $clr = \&cyn
             }
 
