@@ -90,8 +90,8 @@ BEGIN {
                     next
                 }
 
-                $clr = \&cyn if $chr =~ /[dw]/i;
-                $clr = \&ylw if $chr =~ /[AefFnNrRtTzZ\\]/
+                $clr = \&cyn if $chr =~ /[dhsvw]/;
+                $clr = \&ylw if $chr =~ /[AbBefFnGNrRtTzZ\\]/
 
             } elsif ($chr =~ /[\[\(\{]/) {
                 $grp = $chr;
