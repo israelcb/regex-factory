@@ -16,7 +16,7 @@ our $VERSION = 'v0.0.1';
 
 BEGIN {
     sub bld   ($) { colored shift, 'bold' }
-    sub b_red ($) { colored shift, 'bold bright_red' }
+    sub b_blu ($) { colored shift, 'bold bright_blue' }
 
     sub wht ($) { shift }
     sub red ($) { colored shift, 'bright_red' }
@@ -67,8 +67,11 @@ BEGIN {
 
             my $clr;
 
-            unless ($prev or $chr ne '^') {
-                $clr = \&b_red
+            unless (
+                ($prev or $chr ne '^')
+                and (/./ or $chr ne '$')
+            ) {
+                $clr = \&b_blu
 
             } elsif ($grp) {
                 $chr = $prev . $chr;
@@ -90,9 +93,13 @@ BEGIN {
                     next
                 }
 
-                $clr = \&cyn if $chr =~ /[dhsvw]/;
-                $clr = \&ylw if $chr =~ /[AbBefFnGNrRtTzZ\\]/;
-                $chr = $prev . $chr if defined $clr
+                $clr = \&b_blu if $chr =~ /[AzZ]/;
+                $clr = \&cyn   if $chr =~ /[dhsvw]/;
+                $clr = \&ylw   if $chr =~ /[bBefFnGNrRtT\\]/;
+
+                if (defined $clr) {
+                    $chr = $prev . $chr
+                }
 
             } elsif ($chr eq '\\') {
                 next
