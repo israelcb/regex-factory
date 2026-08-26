@@ -65,7 +65,7 @@ BEGIN {
             last unless s/^(.)//;
             (my $prev, $chr) = ($chr // '', @{^CAPTURE});
 
-            my $clr = \&wht;
+            my $clr;
 
             unless ($prev or $chr ne '^') {
                 $clr = \&b_red
@@ -91,7 +91,11 @@ BEGIN {
                 }
 
                 $clr = \&cyn if $chr =~ /[dhsvw]/;
-                $clr = \&ylw if $chr =~ /[AbBefFnGNrRtTzZ\\]/
+                $clr = \&ylw if $chr =~ /[AbBefFnGNrRtTzZ\\]/;
+                $chr = $prev . $chr if defined $clr
+
+            } elsif ($chr eq '\\') {
+                next
 
             } elsif ($chr =~ /[\[\(\{]/) {
                 $grp = $chr;
@@ -101,6 +105,7 @@ BEGIN {
                 $clr = \&cyn
             }
 
+            $clr //= \&wht;
             $fmt .= &$clr($chr)
         }
 
