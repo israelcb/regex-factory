@@ -1,2 +1,3 @@
 The best assistant for regular expressions building.
-$ regex-factory $file $regex
+
+`$ regex-factory $file $regex`
