@@ -7,123 +7,19 @@ use constant EXT_ALL_CLEAR => 0;
 use constant EXT_USAGE_ERR => 64;
 use constant EXT_NOT_FOUND => 66;
 
-use Term::ANSIColor;
-use Data::Dump  qw[ dd ];
-use Time::HiRes qw[ sleep ];
-use List::Util  qw[ first uniq min ];
+use lib './lib';
+use Data::Dump           qw[ dd ];
+use List::Util           qw[ first uniq min ];
+use Time::HiRes          qw[ sleep ];
+use RegexFactory         qw[ :all ];
+use RegexFactory::Colors qw[ :all ];
 
 our $VERSION = 'v0.0.1';
-
-BEGIN {
-    sub bld   ($) { colored shift, 'bold' }
-    sub b_blu ($) { colored shift, 'bold bright_blue' }
-
-    sub wht ($) { shift }
-    sub red ($) { colored shift, 'bright_red' }
-    sub cyn ($) { colored shift, 'bright_cyan' }
-    sub ylw ($) { colored shift, 'bright_yellow' }
-    sub mgt ($) { colored shift, 'bright_magenta' }
-
-    sub report_error ($@) {
-        my $file     = shift;
-        my $error    = shift;
-        my $ext_code = shift;
-
-        # Todo:
-        # Test and treat user input containing ' at ',
-        # or find a way of show the pure error, without
-        # printing the path.
-        chomp $error;
-        $error =~ s/\n.+?$//;
-        $error =~ s/^([^{].+?) at .+?$/$1/;
-        $error =~ s/^{([^}]+?)}.*$/$1/;
-        
-        print red $file;
-        print " - $error\n";
-        exit $ext_code
-    }
-
-    sub verify_odd_escapes ($) {
-        length(shift) % 2 == 1
-    }
-
-    sub number_format ($) {
-        my $number = shift;
-
-        1 while $number =~ s/
-            (\d)(\d{3})(\s|$)
-        /$1 $2$3/x;
-        
-        $number
-    }
-
-    # https://www.pcre.org/original/doc/html/pcrepattern.html
-    sub style_regex () {
-        my ($grp, $chr, $fmt);
-
-        while (1) {
-            last unless s/^(.)//;
-            (my $prev, $chr) = ($chr // '', @{^CAPTURE});
-
-            my $clr;
-
-            unless (
-                ($prev or $chr ne '^')
-                and (/./ or $chr ne '$')
-            ) {
-                $clr = \&b_blu
-
-            } elsif ($grp) {
-                $chr = $prev . $chr;
-
-                next unless $chr =~ /^(?:
-                    \\Q(?:[^\\]*(?:\\[^E]|))*\\E
-                    |\((?:[^\)]*(?:[^\\]\\\)|))*\)
-                    |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
-                    |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
-                )$/x;
-
-                undef $grp;
-                ($prev) = $chr =~ /(.)$/;
-                $clr = \&ylw
-
-            } elsif ($prev eq '\\') {
-                if ($chr eq 'Q') {
-                    $grp = '\\' . $&;
-                    next
-                }
-
-                $clr = \&b_blu if $chr =~ /[AzZ]/;
-                $clr = \&cyn   if $chr =~ /[dhsvw]/;
-                $clr = \&ylw   if $chr =~ /[bBefFnGNrRtT\\]/;
-
-                if (defined $clr) {
-                    $chr = $prev . $chr
-                }
-
-            } elsif ($chr eq '\\') {
-                next
-
-            } elsif ($chr =~ /[\[\(\{]/) {
-                $grp = $chr;
-                next
-
-            } elsif ($chr =~ /[\+\.\*\?\|]/) {
-                $clr = \&cyn
-            }
-
-            $clr //= \&wht;
-            $fmt .= &$clr($chr)
-        }
-
-        join colored('/', 'bold'), '', $fmt, ''
-    }
-}
 
 INIT {
     return if @ARGV == 2;
 
-    print colored('Usage:', 'bold');
+    print bld 'Usage:';
     print " regex-factory <file> <regex>\n";
     exit EXT_USAGE_ERR
 }
@@ -176,7 +72,6 @@ INIT {
         $regex = qr/$body/;
 
         # Todo:
-        # - Modularize
         # - Write tests
 
         # Todo:
@@ -210,13 +105,13 @@ INIT {
         # ln x:   Group foo    Group bar    Group 1    Group 2
         # ln x+1: [.......]    [.......]    [.....]    [.....]
 
-        print colored "'$raw_input'", 'bright_yellow';
-        print colored ' :: ', 'bright_magenta';
+        print ylw "'$raw_input'";
+        print mgt ' :: ';
         print style_regex for $body;
 
         print(
             ($flags)
-            ? colored $flags, 'bold'
+            ? bld $flags
             : ' (no flags)'
         );
 
@@ -254,51 +149,47 @@ while (my $line = <$fh>) {
 
 close $fh;
 
-my $n_matches = @matches;
 @u_matches = sort { $$b[1] <=> $$a[1] } @u_matches;
+my $n_matches = @matches;
+my $u_matches = @u_matches;
 
 if ($n_matches > 0 and !$global) {
     my $l = pop @{ $matches[0] };
-
-    print colored
-        "Found match beginning at line $l",
-        'bold bright_green';
+    print bgr "Found match beginning at line $l"
     
 } elsif ($n_matches > 0) {
     print "\n";
-    print colored "# Total matches: ", 'bright_magenta';
-    print colored number_format $n_matches, 'bold';
+    print mgt "# Total matches: ";
+    print bld number_format $n_matches;
     print "\n";
 
     my $end = min 4, $n_matches - 1;
     foreach my $m (@matches[0..$end]) {
         print ":$$m[1]";
-        print colored " '$$m[0]'", 'bright_yellow';
+        print ylw " '$$m[0]'";
         print "\n";
     }
+    print "[...]\n" if @matches > 5;
 
-    if (@matches > 5) {
-        print "[...]\n";
+    print red "\n# Unique matches: ";
+    print bld number_format $u_matches;
+
+    my @print;
+    while (my $u = shift @u_matches) {
+        if (@print == 10) {
+            push @print, '[...]';
+            last
+        }
+
+        push @print, sprintf '%s (%s)'
+            , (ylw "'$$u[0]'")
+            , (number_format $$u[1])
     }
 
-    print colored "\n# Unique matches: ", 'bright_red';
-    print colored number_format @u_matches, 'bold';
-
-    $end = min 9, scalar(@u_matches) - 1;
-    foreach my $u (@u_matches[0..$end]) {
-        print "\n";
-        print colored "'$$u[0]'", 'bright_yellow';
-        print ' (' . number_format($$u[1]) . ')';
-    }
-    
-    if (@u_matches > 10) {
-        print "\n[...]";
-    }
+    print join "\n", '', @print
     
 } else {
-    print colored
-        'No matches found!',
-        'bold bright_red';
+    print brd 'No matches found!'
 }
 
 print "\n" x 2;
