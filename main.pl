@@ -74,9 +74,7 @@ BEGIN {
                 $chr = $prev . $chr;
 
                 next unless $chr =~ /^(?:
-                    \\A(?:[^\\]*(?:\\[^Z]|))*\\Z
-                    |\\Q(?:[^\\]*(?:\\[^E]|))*\\E
-                    |\\a(?:[^\\]*(?:\\[^z]|))*\\z
+                    \\Q(?:[^\\]*(?:\\[^E]|))*\\E
                     |\((?:[^\)]*(?:[^\\]\\\)|))*\)
                     |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
                     |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
@@ -87,13 +85,13 @@ BEGIN {
                 $clr = \&ylw
 
             } elsif ($prev eq '\\') {
-                if ($chr =~ /[aAQ]/) {
+                if ($chr eq 'Q') {
                     $grp = '\\' . $&;
                     next
                 }
 
                 $clr = \&cyn if $chr =~ /[dw]/i;
-                $clr = \&ylw if $chr =~ /[efFnNrRtT\\]/
+                $clr = \&ylw if $chr =~ /[AefFnNrRtTzZ\\]/
 
             } elsif ($chr =~ /[\[\(\{]/) {
                 $grp = $chr;
