@@ -12,16 +12,16 @@ our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 
-sub clr { \&{( shift )} }
-sub bld { colored shift, 'bold' }
-sub brd { colored shift, 'bold bright_red' }
-sub bbl { colored shift, 'bold bright_blue' }
-sub bgr { colored shift, 'bold bright_green' }
+sub clr :prototype($) { \&{( shift )} }
+sub bld :prototype($) { colored shift, 'bold' }
+sub brd :prototype($) { colored shift, 'bold bright_red' }
+sub bbl :prototype($) { colored shift, 'bold bright_blue' }
+sub bgr :prototype($) { colored shift, 'bold bright_green' }
 
-sub wht { shift }
+sub wht :prototype($) { shift }
 sub red :prototype($) { colored shift, 'bright_red' }
-sub cyn { colored shift, 'bright_cyan' }
-sub ylw { colored shift, 'bright_yellow' }
+sub cyn :prototype($) { colored shift, 'bright_cyan' }
+sub ylw :prototype($) { colored shift, 'bright_yellow' }
 sub mgt :prototype($) { colored shift, 'bright_magenta' }
 
 1

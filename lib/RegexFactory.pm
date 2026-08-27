@@ -18,30 +18,30 @@ our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 
-sub report_error {
-    my $file     = shift;
-    my $error    = shift;
-    my $ext_code = shift;
+sub report_error :prototype($@) {
+    my $file = shift;
 
     # Todo:
     # Test and treat user input containing ' at ',
     # or find a way of show the pure error, without
     # printing the path.
-    chomp $error;
+    chomp( my $error = shift );
     $error =~ s/\n.+?$//;
     $error =~ s/^([^{].+?) at .+?$/$1/;
     $error =~ s/^{([^}]+?)}.*$/$1/;
     
     print red $file;
     print " - $error\n";
+
+    my $ext_code = shift;
     exit $ext_code
 }
 
-sub verify_odd_escapes {
+sub verify_odd_escapes :prototype($) {
     length(shift) % 2 == 1
 }
 
-sub number_format {
+sub number_format :prototype($) {
     my $number = shift;
 
     1 while $number =~ s/
@@ -52,7 +52,7 @@ sub number_format {
 }
 
 # https://www.pcre.org/original/doc/html/pcrepattern.html
-sub style_regex () {
+sub style_regex :prototype() {
     my ($grp, $chr, $fmt);
 
     while (1) {
