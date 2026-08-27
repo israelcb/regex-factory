@@ -1,11 +1,16 @@
 package RegexFactory;
 use base 'Exporter';
+use experimental qw[ signatures ];
+
+use Data::Dump qw[ dd ];
 use RegexFactory::Colors qw[ :all ];
 
 our @EXPORT_OK = qw[
     style_regex
     report_error
     number_format
+    match_counter
+    format_matches
     verify_odd_escapes
 ];
 
@@ -106,6 +111,33 @@ sub style_regex () {
     }
 
     join bld('/'), '', $fmt, ''
+}
+
+sub match_counter :prototype($$) {
+    my $header = shift;
+    my $count  = shift;
+
+    sprintf "\n%s %s\n"
+    , $header
+    , bld number_format $count
+}
+
+sub format_matches :prototype(&$@) {
+    my $fmt   = shift;
+    my $limit = shift;
+    my @output;
+
+    while (my $m = shift) {
+        push @output, &$fmt(
+            (ylw "'$$m[0]'")
+            , (number_format $$m[1])
+        );
+
+        next unless @output == $limit;
+        push @output, '[...]'; last
+    }
+
+    join "\n", @output
 }
 
 1

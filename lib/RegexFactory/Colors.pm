@@ -1,5 +1,6 @@
 package RegexFactory::Colors;
 use base 'Exporter';
+use experimental qw[ signatures ];
 use Term::ANSIColor qw[ colored :constants ];
 
 our @EXPORT_OK = qw[
@@ -18,9 +19,9 @@ sub bbl { colored shift, 'bold bright_blue' }
 sub bgr { colored shift, 'bold bright_green' }
 
 sub wht { shift }
-sub red { colored shift, 'bright_red' }
+sub red :prototype($) { colored shift, 'bright_red' }
 sub cyn { colored shift, 'bright_cyan' }
 sub ylw { colored shift, 'bright_yellow' }
-sub mgt { colored shift, 'bright_magenta' }
+sub mgt :prototype($) { colored shift, 'bright_magenta' }
 
 1
