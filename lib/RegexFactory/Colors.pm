@@ -12,7 +12,7 @@ our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 
-sub clr :prototype($) { \&{( shift )} }
+sub clr :prototype($$) { &{( shift )}(shift) }
 sub bld :prototype($) { colored shift, 'bold' }
 sub brd :prototype($) { colored shift, 'bold bright_red' }
 sub bbl :prototype($) { colored shift, 'bold bright_blue' }

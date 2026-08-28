@@ -76,13 +76,13 @@ INIT {
 
         # Todo:
         # Improve regex metacharacters highlighting:
-        # (...)             - group must not interfere in the content matching
-        # (?:...)           - no colors for '(?:' or ')'
         # \w*, \w+, \w?     - \+ must have the same color of 'w'
         # *?, +?            - special colors when preceded by a group closing
         # \w*?, \w+?        - \+?* must have the same color of 'w'
         # \n, \t, \r, \f... - \ must have the same color of n, t, r...
         # [^...]            - must be distinct of [...], possibly in red
+        # (?:...)           - no colors for '(?:' or ')'
+        # (...)             - group must not interfere in the content coloring
 
         # Todo:
         # Improve group highlighting (phase 1):
@@ -107,7 +107,7 @@ INIT {
 
         print ylw "'$raw_input'";
         print mgt ' :: ';
-        print style_regex for $body;
+        print style_regex $body;
 
         print(
             ($flags)
@@ -118,6 +118,8 @@ INIT {
         print "\n";
             
     } catch ($e) {
+        say $e;
+        exit 0;
         report_error $raw_input, $e, EXT_USAGE_ERR
     }
 }
@@ -159,11 +161,11 @@ if ($n_matches > 0 and !$global) {
     
 } elsif ($n_matches > 0) {
     print match_counter mgt '# Total matches:', $n_matches;
-    print format_matches { ":$_[1] $_[0]" } 10, @matches;
+    print matches_list { ":$_[1] $_[0]" } 10, @matches;
     print "\n";
 
     print match_counter red '# Unique matches:', $u_matches;
-    print format_matches { "$_[0] ($_[1])" } 5, @u_matches
+    print matches_list { "$_[0] ($_[1])" } 5, @u_matches
     
 } else {
     print brd 'No matches found!'

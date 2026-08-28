@@ -10,13 +10,18 @@ our @EXPORT_OK = qw[
     report_error
     number_format
     match_counter
-    format_matches
+    matches_list
     verify_odd_escapes
 ];
 
 our %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
+
+my $r_whole_group = qr/^(?:
+    \\Q(?:[^\\]*(?:\\[^E]|))*\\E
+    |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
+)$/x;
 
 sub report_error :prototype($@) {
     my $file = shift;
@@ -52,65 +57,50 @@ sub number_format :prototype($) {
 }
 
 # https://www.pcre.org/original/doc/html/pcrepattern.html
-sub style_regex :prototype() {
-    my ($grp, $chr, $fmt);
+sub style_regex :prototype($) {
+    my $r = shift;
+    my ($fmt, $prev, $grp, $meta, $c);
 
-    while (1) {
-        last unless s/^(.)//;
-        (my $prev, $chr) = ($chr // '', @{^CAPTURE});
+    while ((my $chr, $r) = $r =~ /(.)(.*)/) {
+        (my $first, $fmt) = (defined $fmt)
+        ? (0, $fmt . clr $c // 'wht', $chr)
+        : (1, '');
 
-        my $c;
-
-        unless (
-            ($prev or $chr ne '^')
-            and (/./ or $chr ne '$')
-        ) {
-            $c = 'bbl'
-
-        } elsif ($grp) {
-            $chr = $prev . $chr;
-
-            next unless $chr =~ /^(?:
-                \\Q(?:[^\\]*(?:\\[^E]|))*\\E
-                |\((?:[^\)]*(?:[^\\]\\\)|))*\)
-                |\{(?:[^\}]*(?:[^\\]\\\}|))*\}
-                |\[(?:[^\]]*(?:[^\\]\\\]|))*\]
-            )$/x;
-
+        unless (defined $prev or $first) {
             undef $grp;
-            ($prev) = $chr =~ /(.)$/;
-            $c = 'ylw'
-
-        } elsif ($prev eq '\\') {
-            if ($chr eq 'Q') {
-                $grp = '\\' . $&;
-                next
-            }
-
-            $c = 'bbl' if $chr =~ /[AzZ]/;
-            $c = 'cyn' if $chr =~ /[dhsvw]/;
-            $c = 'ylw' if $chr =~ /[bBefFnGNrRtT\\]/;
-
-            if (defined $c) {
-                $chr = $prev . $chr
-            }
-
-        } elsif ($chr eq '\\') {
             next
-
-        } elsif ($chr =~ /[\[\(\{]/) {
-            $grp = $chr;
-            next
-
-        } elsif ($chr =~ /[\+\.\*\?\|]/) {
-            $c = 'cyn'
         }
 
-        $c //= 'wht';
-        $fmt .= &{clr $c}($chr)
+        $prev = ($prev // '') . $chr;
+
+        if (defined $grp) {
+            $prev =~ /$r_whole_group/
+            ? redo ($chr, $prev, $c) = ($prev, undef, 'ylw')
+            : next
+        }
+
+        next $grp = $prev . $chr
+            if $prev =~ /\\Q|{/;
+
+        next $meta = $c = 'cyn'
+            if $prev =~ /^\\[dhsvw]$/i;
+
+        next $c = 'ylw'
+            if $prev =~ /^\\[bBefFnGNrRtT\\]$/;
+
+        redo $c = 'bbl' if
+            $prev eq '^'
+            or !$r and $chr eq '$'
+            or $prev =~ /^\\[AzZ]$/;
+
+        next $c = $meta
+            if $chr =~ /[\+\*\?]/;
+
+        next $c = 'cyn'
+            if $chr =~ /[\.\|]/
     }
 
-    join bld('/'), '', $fmt, ''
+    join bld '/', '', $fmt, ''
 }
 
 sub match_counter :prototype($$) {
@@ -122,7 +112,7 @@ sub match_counter :prototype($$) {
     , bld number_format $count
 }
 
-sub format_matches :prototype(&$@) {
+sub matches_list :prototype(&$@) {
     my $fmt   = shift;
     my $limit = shift;
     my @output;
